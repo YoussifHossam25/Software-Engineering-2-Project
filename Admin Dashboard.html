@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ECommerce — Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg-0: oklch(0.16 0.005 250);
+      --bg-1: oklch(0.20 0.006 250);
+      --bg-1b: oklch(0.22 0.006 250);
+      --bg-2: oklch(0.25 0.007 250);
+      --bg-3: oklch(0.30 0.008 250);
+      --border: oklch(0.30 0.007 250 / 0.8);
+      --fg-1: oklch(0.95 0.005 250);
+      --fg-2: oklch(0.78 0.006 250);
+      --fg-3: oklch(0.58 0.008 250);
+      --fg-4: oklch(0.45 0.008 250);
+    }
+    html, body, #root { height: 100%; }
+    body {
+      font-family: 'Geist', system-ui, -apple-system, sans-serif;
+      background: var(--bg-0);
+      color: var(--fg-1);
+      font-feature-settings: "ss01", "cv11";
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    .font-mono, code, kbd { font-family: 'Geist Mono', ui-monospace, monospace; }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(800px 400px at 80% -10%, oklch(0.30 0.06 60 / 0.18), transparent 60%),
+        radial-gradient(600px 300px at -10% 100%, oklch(0.28 0.04 250 / 0.4), transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    #root { position: relative; z-index: 1; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--bg-2); border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--bg-3); }
+    ::selection { background: oklch(0.6 0.18 55 / 0.35); color: var(--fg-1); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.96) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes slideInRight { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo, createContext, useContext, useCallback } = React;
+
+    // ── Tweaks Panel styles ──────────────────────────────────────────────────
+    const __TWEAKS_STYLE = `
+      .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+        max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+        background:rgba(250,249,247,.78);color:#29261b;
+        -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+        border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+        box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+        font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+      .twk-hd{display:flex;align-items:center;justify-content:space-between;
+        padding:10px 8px 10px 14px;cursor:move;user-select:none}
+      .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+      .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+        width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+      .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+      .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+        overflow-y:auto;overflow-x:hidden;min-height:0;
+        scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+      .twk-body::-webkit-scrollbar{width:8px}
+      .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+      .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+        border:2px solid transparent;background-clip:content-box}
+      .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+        border:2px solid transparent;background-clip:content-box}
+      .twk-row{display:flex;flex-direction:column;gap:5px}
+      .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+      .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;color:rgba(41,38,27,.72)}
+      .twk-lbl>span:first-child{font-weight:500}
+      .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+      .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+        color:rgba(41,38,27,.45);padding:10px 0 0}
+      .twk-sect:first-child{padding-top:0}
+      .twk-field{appearance:none;width:100%;height:26px;padding:0 8px;
+        border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+        background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+      .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+      .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+        background:rgba(0,0,0,.06);user-select:none}
+      .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+        background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+        transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+      .twk-seg.dragging .twk-seg-thumb{transition:none}
+      .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+        background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+        border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;overflow-wrap:anywhere}
+      .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+        border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+        background:transparent;flex-shrink:0}
+      .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+      .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+      .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+    `;
+
+    function useTweaks(defaults) {
+      const [values, setValues] = useState(defaults);
+      const setTweak = useCallback((keyOrEdits, val) => {
+        const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+          ? keyOrEdits : { [keyOrEdits]: val };
+        setValues((prev) => ({ ...prev, ...edits }));
+        window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+      }, []);
+      return [values, setTweak];
+    }
+
+    function TweaksPanel({ title = 'Tweaks', children }) {
+      const [open, setOpen] = useState(false);
+      const dragRef = useRef(null);
+      const offsetRef = useRef({ x: 16, y: 16 });
+      const PAD = 16;
+
+      const clampToViewport = useCallback(() => {
+        const panel = dragRef.current;
+        if (!panel) return;
+        const w = panel.offsetWidth, h = panel.offsetHeight;
+        const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+        const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+        offsetRef.current = {
+          x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+          y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+        };
+        panel.style.right = offsetRef.current.x + 'px';
+        panel.style.bottom = offsetRef.current.y + 'px';
+      }, []);
+
+      useEffect(() => {
+        if (!open) return;
+        clampToViewport();
+        const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(clampToViewport) : null;
+        if (ro) ro.observe(document.documentElement);
+        else window.addEventListener('resize', clampToViewport);
+        return () => { if (ro) ro.disconnect(); else window.removeEventListener('resize', clampToViewport); };
+      }, [open, clampToViewport]);
+
+      useEffect(() => {
+        const onMsg = (e) => {
+          const t = e?.data?.type;
+          if (t === '__activate_edit_mode') setOpen(true);
+          else if (t === '__deactivate_edit_mode') setOpen(false);
+        };
+        window.addEventListener('message', onMsg);
+        window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+        return () => window.removeEventListener('message', onMsg);
+      }, []);
+
+      const dismiss = () => {
+        setOpen(false);
+        window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+      };
+
+      const onDragStart = (e) => {
+        const panel = dragRef.current;
+        if (!panel) return;
+        const r = panel.getBoundingClientRect();
+        const sx = e.clientX, sy = e.clientY;
+        const startRight = window.innerWidth - r.right;
+        const startBottom = window.innerHeight - r.bottom;
+        const move = (ev) => {
+          offsetRef.current = { x: startRight - (ev.clientX - sx), y: startBottom - (ev.clientY - sy) };
+          clampToViewport();
+        };
+        const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+      };
+
+      if (!open) return null;
+      return (
+        <>
+          <style>{__TWEAKS_STYLE}</style>
+          <div ref={dragRef} className="twk-panel" style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+            <div className="twk-hd" onMouseDown={onDragStart}>
+              <b>{title}</b>
+              <button className="twk-x" aria-label="Close tweaks" onMouseDown={(e) => e.stopPropagation()} onClick={dismiss}>✕</button>
+            </div>
+            <div className="twk-body">{children}</div>
+          </div>
+        </>
+      );
+    }
+
+    function TweakSection({ label, children }) {
+      return (<><div className="twk-sect">{label}</div>{children}</>);
+    }
+
+    function TweakRow({ label, value, children, inline = false }) {
+      return (
+        <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+          <div className="twk-lbl">
+            <span>{label}</span>
+            {value != null && <span className="twk-val">{value}</span>}
+          </div>
+          {children}
+        </div>
+      );
+    }
+
+    function TweakRadio({ label, value, options, onChange }) {
+      const trackRef = useRef(null);
+      const [dragging, setDragging] = useState(false);
+      const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+      const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+      const n = opts.length;
+      const valueRef = useRef(value);
+      valueRef.current = value;
+
+      const segAt = (clientX) => {
+        const r = trackRef.current.getBoundingClientRect();
+        const inner = r.width - 4;
+        const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+        return opts[Math.max(0, Math.min(n - 1, i))].value;
+      };
+
+      const onPointerDown = (e) => {
+        setDragging(true);
+        const v0 = segAt(e.clientX);
+        if (v0 !== valueRef.current) onChange(v0);
+        const move = (ev) => { if (!trackRef.current) return; const v = segAt(ev.clientX); if (v !== valueRef.current) onChange(v); };
+        const up = () => { setDragging(false); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+      };
+
+      return (
+        <TweakRow label={label}>
+          <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown} className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+            <div className="twk-seg-thumb" style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`, width: `calc((100% - 4px) / ${n})` }} />
+            {opts.map((o) => (
+              <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>{o.label}</button>
+            ))}
+          </div>
+        </TweakRow>
+      );
+    }
+
+    function TweakColor({ label, value, onChange }) {
+      return (
+        <div className="twk-row twk-row-h">
+          <div className="twk-lbl"><span>{label}</span></div>
+          <input type="color" className="twk-swatch" value={value} onChange={(e) => onChange(e.target.value)} />
+        </div>
+      );
+    }
+
+    // ── Icons ────────────────────────────────────────────────────────────────
+    const Icon = ({ d, size = 18, fill = "none", stroke = "currentColor", strokeWidth = 1.6, children, style }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" style={style}>
+        {d ? <path d={d} /> : children}
+      </svg>
+    );
+
+    const I = {
+      Dashboard: (p) => <Icon {...p}><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></Icon>,
+      Box: (p) => <Icon {...p}><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></Icon>,
+      Cart: (p) => <Icon {...p}><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.5L21 8H6"/></Icon>,
+      Layers: (p) => <Icon {...p}><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 18 9 5 9-5"/></Icon>,
+      Truck: (p) => <Icon {...p}><path d="M3 7h11v8H3z"/><path d="M14 10h4l3 3v2h-7"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></Icon>,
+      Users: (p) => <Icon {...p}><circle cx="9" cy="8" r="3.5"/><path d="M2 20c.8-3.6 3.7-5.5 7-5.5s6.2 1.9 7 5.5"/><circle cx="17.5" cy="7.5" r="2.5"/><path d="M21.5 16c-.4-2-1.8-3.2-4-3.4"/></Icon>,
+      Settings: (p) => <Icon {...p}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></Icon>,
+      LogOut: (p) => <Icon {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></Icon>,
+      Plus: (p) => <Icon {...p}><path d="M12 5v14M5 12h14"/></Icon>,
+      Search: (p) => <Icon {...p}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></Icon>,
+      Edit: (p) => <Icon {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></Icon>,
+      Trash: (p) => <Icon {...p}><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></Icon>,
+      Eye: (p) => <Icon {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></Icon>,
+      EyeOff: (p) => <Icon {...p}><path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 7 10 7a13 13 0 0 1-2.4 3.2"/><path d="M6.6 6.6A13 13 0 0 0 2 11s3.5 7 10 7a10 10 0 0 0 4.4-1"/><path d="m2 2 20 20"/><path d="M14.1 14.1A3 3 0 0 1 9.9 9.9"/></Icon>,
+      X: (p) => <Icon {...p}><path d="M18 6 6 18M6 6l12 12"/></Icon>,
+      Check: (p) => <Icon {...p}><path d="m5 12 5 5 9-11"/></Icon>,
+      ChevronDown: (p) => <Icon {...p}><path d="m6 9 6 6 6-6"/></Icon>,
+      ChevronLeft: (p) => <Icon {...p}><path d="m15 18-6-6 6-6"/></Icon>,
+      ChevronRight: (p) => <Icon {...p}><path d="m9 18 6-6-6-6"/></Icon>,
+      Filter: (p) => <Icon {...p}><path d="M3 5h18l-7 9v6l-4-2v-4L3 5Z"/></Icon>,
+      Alert: (p) => <Icon {...p}><path d="M12 3 2 21h20L12 3Z"/><path d="M12 10v5"/><circle cx="12" cy="18" r="0.8" fill="currentColor"/></Icon>,
+      PackageOpen: (p) => <Icon {...p}><path d="M21 8v13H3V8"/><path d="M1 5h22v3H1z"/><path d="M10 12h4"/></Icon>,
+      Bell: (p) => <Icon {...p}><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></Icon>,
+    };
+
+    // ── Role Definitions ─────────────────────────────────────────────────────
+    const ROLES = {
+      admin:    { label: "Admin",    color: "oklch(0.62 0.16 25)",  bg: "oklch(0.32 0.07 25 / 0.5)",  fg: "oklch(0.88 0.10 25)" },
+      manager:  { label: "Manager",  color: "oklch(0.62 0.14 245)", bg: "oklch(0.32 0.07 245 / 0.5)", fg: "oklch(0.86 0.09 245)" },
+      delivery: { label: "Delivery", color: "oklch(0.62 0.14 305)", bg: "oklch(0.32 0.07 305 / 0.5)", fg: "oklch(0.88 0.09 305)" },
+      customer: { label: "Customer", color: "oklch(0.55 0.01 250)", bg: "oklch(0.30 0.005 250 / 0.7)", fg: "oklch(0.78 0.005 250)" },
+    };
+
+    const ROLE_NAV = {
+      admin:    ["dashboard","products","orders","inventory","deliveries","users"],
+      manager:  ["products","orders","inventory"],
+      delivery: ["deliveries"],
+      customer: ["orders"],
+    };
+
+    // ── Shared Components ─────────────────────────────────────────────────────
+
+    function RoleBadge({ role }) {
+      const r = ROLES[role] || ROLES.customer;
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide uppercase"
+              style={{ background: r.bg, color: r.fg, border: `1px solid ${r.color}33` }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: r.color }} />
+          {r.label}
+        </span>
+      );
+    }
+
+    function StatusPill({ active }) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[12px]">
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: active ? "oklch(0.78 0.16 145)" : "oklch(0.5 0.01 250)" }} />
+          <span style={{ color: active ? "oklch(0.85 0.10 145)" : "oklch(0.6 0.01 250)" }}>
+            {active ? "Active" : "Inactive"}
+          </span>
+        </span>
+      );
+    }
+
+    function Sidebar({ currentPage, setCurrentPage, currentRole, accent }) {
+      const allowed = ROLE_NAV[currentRole] || [];
+      const navItems = [
+        { key: "dashboard",  label: "Dashboard",  icon: I.Dashboard },
+        { key: "products",   label: "Products",   icon: I.Box },
+        { key: "orders",     label: "Orders",     icon: I.Cart },
+        { key: "inventory",  label: "Inventory",  icon: I.Layers },
+        { key: "deliveries", label: "Deliveries", icon: I.Truck },
+        { key: "users",      label: "Users",      icon: I.Users, badge: "NEW" },
+      ];
+
+      return (
+        <aside className="w-[244px] shrink-0 h-screen sticky top-0 flex flex-col"
+               style={{ background: "var(--bg-1)", borderRight: "1px solid var(--border)" }}>
+          <div className="px-5 pt-6 pb-7">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-[15px]"
+                   style={{ background: `linear-gradient(135deg, ${accent}, oklch(0.62 0.18 35))`, color: "oklch(0.18 0.01 60)", boxShadow: `0 6px 18px -8px ${accent}` }}>
+                ◆
+              </div>
+              <div className="leading-tight">
+                <div className="text-[14.5px] font-semibold tracking-tight" style={{ color: "var(--fg-1)" }}>ECommerce</div>
+                <div className="text-[11px] tracking-wide" style={{ color: "var(--fg-3)" }}>Delivery System</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="px-5 pb-2 text-[10px] tracking-[0.18em] font-medium uppercase" style={{ color: "var(--fg-3)" }}>
+            Workspace
+          </div>
+
+          <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+            {navItems.map((item) => {
+              const ItemIcon = item.icon;
+              const active = currentPage === item.key;
+              const enabled = allowed.includes(item.key);
+              return (
+                <button key={item.key} onClick={() => enabled && setCurrentPage(item.key)} disabled={!enabled}
+                        className="w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] transition-all duration-150"
+                        style={{ background: active ? `${accent}1f` : "transparent", color: active ? accent : (enabled ? "var(--fg-2)" : "var(--fg-4)"), cursor: enabled ? "pointer" : "not-allowed", opacity: enabled ? 1 : 0.4, position: "relative" }}
+                        onMouseEnter={(e) => { if (enabled && !active) e.currentTarget.style.background = "var(--bg-2)"; }}
+                        onMouseLeave={(e) => { if (enabled && !active) e.currentTarget.style.background = "transparent"; }}>
+                  {active && (<span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full" style={{ background: accent }} />)}
+                  <ItemIcon size={17} />
+                  <span className="font-medium">{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-md"
+                          style={{ background: active ? `${accent}33` : "var(--bg-2)", color: active ? accent : "var(--fg-3)" }}>
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="px-3 pt-3 pb-3 border-t" style={{ borderColor: "var(--border)" }}>
+            <div className="px-2 pb-2 text-[10px] tracking-[0.18em] font-medium uppercase" style={{ color: "var(--fg-3)" }}>Admin</div>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px]"
+                    style={{ color: "var(--fg-2)" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-2)"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+              <I.Settings size={17}/><span className="font-medium">Settings</span>
+            </button>
+            <div className="mt-2 mx-1 p-2.5 rounded-xl flex items-center gap-2.5" style={{ background: "var(--bg-2)" }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-semibold shrink-0"
+                   style={{ background: accent, color: "oklch(0.18 0.01 60)" }}>
+                {currentRole === "admin" ? "AD" : currentRole === "manager" ? "MG" : currentRole === "delivery" ? "DV" : "CU"}
+              </div>
+              <div className="leading-tight min-w-0 flex-1">
+                <div className="text-[12.5px] font-medium truncate" style={{ color: "var(--fg-1)" }}>
+                  {currentRole === "admin" ? "Alex Doran" : currentRole === "manager" ? "Mira Patel" : currentRole === "delivery" ? "Ravi Kumar" : "Sara Ng"}
+                </div>
+                <div className="text-[11px] capitalize" style={{ color: "var(--fg-3)" }}>{currentRole}</div>
+              </div>
+            </div>
+            <button className="mt-2 w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] transition-colors"
+                    style={{ color: "oklch(0.72 0.13 25)" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "oklch(0.32 0.05 25 / 0.3)"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+              <I.LogOut size={17}/><span className="font-medium">Sign Out</span>
+            </button>
+          </div>
+        </aside>
+      );
+    }
+
+    function Header({ title, subtitle, right }) {
+      return (
+        <div className="flex items-end justify-between gap-4 mb-7">
+          <div>
+            <h1 className="text-[28px] font-semibold tracking-tight leading-none" style={{ color: "var(--fg-1)" }}>{title}</h1>
+            {subtitle && <p className="mt-2 text-[13.5px]" style={{ color: "var(--fg-3)" }}>{subtitle}</p>}
+          </div>
+          {right}
+        </div>
+      );
+    }
+
+    function Button({ variant = "primary", size = "md", icon: BtnIcon, children, accent, ...rest }) {
+      const sizes = { sm: "px-3 py-1.5 text-[12.5px] gap-1.5 rounded-lg", md: "px-4 py-2.5 text-[13px] gap-2 rounded-xl" };
+      const base = `inline-flex items-center font-medium transition-all duration-150 active:scale-[0.98] ${sizes[size]}`;
+      const styles = variant === "primary"
+        ? { background: accent, color: "oklch(0.18 0.01 60)", boxShadow: `0 6px 16px -8px ${accent}` }
+        : variant === "ghost"
+        ? { background: "transparent", color: "var(--fg-2)" }
+        : variant === "danger"
+        ? { background: "oklch(0.32 0.07 25 / 0.6)", color: "oklch(0.85 0.13 25)", border: "1px solid oklch(0.45 0.10 25 / 0.5)" }
+        : { background: "var(--bg-2)", color: "var(--fg-1)", border: "1px solid var(--border)" };
+      return (
+        <button className={base} style={styles}
+                onMouseEnter={(e) => {
+                  if (variant === "primary") e.currentTarget.style.filter = "brightness(1.08)";
+                  else if (variant === "ghost") e.currentTarget.style.background = "var(--bg-2)";
+                  else if (variant === "secondary") e.currentTarget.style.background = "var(--bg-3)";
+                  else if (variant === "danger") e.currentTarget.style.background = "oklch(0.36 0.09 25 / 0.6)";
+                }}
+                onMouseLeave={(e) => {
+                  if (variant === "primary") e.currentTarget.style.filter = "none";
+                  else if (variant === "ghost") e.currentTarget.style.background = "transparent";
+                  else if (variant === "secondary") e.currentTarget.style.background = "var(--bg-2)";
+                  else if (variant === "danger") e.currentTarget.style.background = "oklch(0.32 0.07 25 / 0.6)";
+                }}
+                {...rest}>
+          {BtnIcon && <BtnIcon size={15} />}
+          {children}
+        </button>
+      );
+    }
+
+    function Field({ label, hint, children }) {
+      return (
+        <label className="block">
+          <div className="text-[11.5px] mb-1.5 font-medium tracking-wide uppercase" style={{ color: "var(--fg-3)" }}>{label}</div>
+          {children}
+          {hint && <div className="mt-1 text-[11.5px]" style={{ color: "oklch(0.65 0.13 25)" }}>{hint}</div>}
+        </label>
+      );
+    }
+
+    function TextInput(props) {
+      return (
+        <input {...props} className="w-full px-3.5 py-2.5 text-[13.5px] rounded-xl outline-none transition-colors"
+               style={{ background: "var(--bg-0)", color: "var(--fg-1)", border: "1px solid var(--border)" }}
+               onFocus={(e) => e.currentTarget.style.borderColor = "var(--accent)"}
+               onBlur={(e) => e.currentTarget.style.borderColor = "var(--border)"} />
+      );
+    }
+
+    function Select({ value, onChange, options }) {
+      const [open, setOpen] = useState(false);
+      const ref = useRef(null);
+      useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+      }, []);
+      const current = options.find((o) => o.value === value);
+      return (
+        <div className="relative" ref={ref}>
+          <button type="button" onClick={() => setOpen(!open)}
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-[13.5px] rounded-xl"
+                  style={{ background: "var(--bg-0)", color: "var(--fg-1)", border: "1px solid var(--border)" }}>
+            <span>{current?.label || "Select…"}</span>
+            <I.ChevronDown size={15} style={{ color: "var(--fg-3)", transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}/>
+          </button>
+          {open && (
+            <div className="absolute z-30 mt-1.5 w-full rounded-xl overflow-hidden"
+                 style={{ background: "var(--bg-1)", border: "1px solid var(--border)", boxShadow: "0 16px 40px -12px rgba(0,0,0,0.6)" }}>
+              {options.map((o) => (
+                <button key={o.value} onClick={() => { onChange(o.value); setOpen(false); }}
+                        className="w-full flex items-center gap-2 px-3.5 py-2.5 text-left text-[13.5px]"
+                        style={{ color: "var(--fg-1)", background: o.value === value ? "var(--bg-2)" : "transparent" }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-2)"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = o.value === value ? "var(--bg-2)" : "transparent"}>
+                  {o.dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: o.dot }}/>}
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function Toggle({ checked, onChange, accent }) {
+      return (
+        <button type="button" onClick={() => onChange(!checked)}
+                className="relative w-[44px] h-[24px] rounded-full transition-colors"
+                style={{ background: checked ? accent : "var(--bg-3)" }}>
+          <span className="absolute top-[2px] left-[2px] w-[20px] h-[20px] rounded-full transition-transform"
+                style={{ background: checked ? "oklch(0.18 0.01 60)" : "var(--fg-3)", transform: checked ? "translateX(20px)" : "translateX(0)" }} />
+        </button>
+      );
+    }
+
+    function Modal({ open, onClose, children, width = 460 }) {
+      useEffect(() => {
+        if (!open) return;
+        const onKey = (e) => e.key === "Escape" && onClose();
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
+      }, [open, onClose]);
+      if (!open) return null;
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+             style={{ background: "oklch(0.1 0.01 250 / 0.7)", backdropFilter: "blur(6px)", animation: "fadeIn .15s ease-out" }}
+             onClick={onClose}>
+          <div className="rounded-2xl w-full overflow-hidden"
+               style={{ maxWidth: width, background: "var(--bg-1)", border: "1px solid var(--border)", boxShadow: "0 30px 80px -20px rgba(0,0,0,0.7)", animation: "popIn .18s cubic-bezier(.2,.9,.3,1.2)" }}
+               onClick={(e) => e.stopPropagation()}>
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    const ToastCtx = createContext(null);
+    const useToast = () => useContext(ToastCtx);
+
+    function ToastProvider({ children }) {
+      const [toasts, setToasts] = useState([]);
+      const push = (t) => {
+        const id = Math.random().toString(36).slice(2);
+        setToasts((s) => [...s, { id, ...t }]);
+        setTimeout(() => setToasts((s) => s.filter((x) => x.id !== id)), 3500);
+      };
+      const api = {
+        success: (msg) => push({ kind: "success", msg }),
+        error: (msg) => push({ kind: "error", msg }),
+        info: (msg) => push({ kind: "info", msg }),
+      };
+      return (
+        <ToastCtx.Provider value={api}>
+          {children}
+          <div className="fixed top-5 right-5 z-[60] space-y-2 pointer-events-none">
+            {toasts.map((t) => (
+              <div key={t.id} className="flex items-center gap-2.5 px-4 py-3 rounded-xl pointer-events-auto"
+                   style={{ minWidth: 260, background: "var(--bg-1)", border: "1px solid var(--border)", boxShadow: "0 16px 40px -10px rgba(0,0,0,0.5)", animation: "slideInRight .25s cubic-bezier(.2,.9,.3,1.2)" }}>
+                <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: t.kind === "success" ? "oklch(0.32 0.10 145 / 0.6)" : t.kind === "error" ? "oklch(0.32 0.10 25 / 0.6)" : "var(--bg-2)", color: t.kind === "success" ? "oklch(0.85 0.16 145)" : t.kind === "error" ? "oklch(0.85 0.13 25)" : "var(--fg-2)" }}>
+                  {t.kind === "success" ? <I.Check size={14}/> : t.kind === "error" ? <I.Alert size={14}/> : <I.Bell size={14}/>}
+                </span>
+                <span className="text-[13px]" style={{ color: "var(--fg-1)" }}>{t.msg}</span>
+              </div>
+            ))}
+          </div>
+        </ToastCtx.Provider>
+      );
+    }
+
+    function ConfirmDialog({ open, title, message, onCancel, onConfirm, confirmLabel = "Delete" }) {
+      return (
+        <Modal open={open} onClose={onCancel} width={400}>
+          <div className="p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                   style={{ background: "oklch(0.32 0.07 25 / 0.5)", color: "oklch(0.85 0.13 25)" }}>
+                <I.Alert size={18}/>
+              </div>
+              <div>
+                <div className="text-[15px] font-semibold mb-1" style={{ color: "var(--fg-1)" }}>{title}</div>
+                <div className="text-[13px] leading-relaxed" style={{ color: "var(--fg-3)" }}>{message}</div>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
+              <Button variant="danger" size="sm" onClick={onConfirm}>{confirmLabel}</Button>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    function EmptyState({ icon: IconC = I.PackageOpen, title, message, action }) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center rounded-2xl"
+             style={{ background: "var(--bg-1)", border: "1px dashed var(--border)" }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+               style={{ background: "var(--bg-2)", color: "var(--fg-3)", border: "1px solid var(--border)" }}>
+            <IconC size={28}/>
+          </div>
+          <div className="text-[16px] font-semibold mb-1.5" style={{ color: "var(--fg-1)" }}>{title}</div>
+          <div className="text-[13.5px] max-w-[360px] leading-relaxed" style={{ color: "var(--fg-3)" }}>{message}</div>
+          {action && <div className="mt-6">{action}</div>}
+        </div>
+      );
+    }
+
+    // ── Pages ─────────────────────────────────────────────────────────────────
+
+    function OrdersPage({ accent }) {
+      const toast = useToast();
+      return (
+        <>
+          <Header title="Orders" subtitle="0 order(s) found."
+                  right={<Button variant="primary" icon={I.Plus} accent={accent} onClick={() => toast.info("Place Order flow coming soon.")}>Place Order</Button>} />
+          <EmptyState icon={I.Cart} title="No orders yet"
+                      message="When customers check out, their orders will land here. You can place a manual order to test the flow."
+                      action={<Button variant="secondary" size="sm" icon={I.Plus} onClick={() => toast.info("Manual order draft started.")}>Place a test order</Button>} />
+        </>
+      );
+    }
+
+    function DashboardPage({ accent }) {
+      return (
+        <>
+          <Header title="Dashboard" subtitle="System overview at a glance." />
+          <EmptyState icon={I.Dashboard} title="Dashboard" message="Charts and KPIs will appear here once data starts flowing in." />
+        </>
+      );
+    }
+
+    function ProductsPage({ accent }) {
+      const toast = useToast();
+      return (
+        <>
+          <Header title="Products" subtitle="0 product(s) found."
+                  right={<Button variant="primary" icon={I.Plus} accent={accent} onClick={() => toast.info("Add Product flow coming soon.")}>Add Product</Button>} />
+          <EmptyState icon={I.Box} title="No products yet"
+                      message="Add your first product to start building the catalog. You can import a CSV or create one manually."
+                      action={<Button variant="secondary" size="sm" icon={I.Plus} onClick={() => toast.info("Manual product draft started.")}>Add a test product</Button>} />
+        </>
+      );
+    }
+
+    function InventoryPage({ accent }) {
+      return (
+        <>
+          <Header title="Inventory" subtitle="Stock and warehouse levels." />
+          <EmptyState icon={I.Layers} title="Inventory dashboard" message="No stock movements recorded yet." />
+        </>
+      );
+    }
+
+    function DeliveriesPage({ accent }) {
+      return (
+        <>
+          <Header title="Deliveries" subtitle="Active and upcoming routes." />
+          <EmptyState icon={I.Truck} title="Deliveries dashboard" message="No deliveries scheduled. Assign drivers to incoming orders to populate this view." />
+        </>
+      );
+    }
+
+    // ── Users Page ────────────────────────────────────────────────────────────
+
+    const SEED_USERS = [
+      { id: "u1",  name: "Alex Doran",    email: "alex.doran@ecommerce.io",  role: "admin",    active: true,  created: "2025-08-12" },
+      { id: "u2",  name: "Mira Patel",    email: "mira.p@ecommerce.io",      role: "manager",  active: true,  created: "2025-09-03" },
+      { id: "u3",  name: "Ravi Kumar",    email: "ravi.k@ecommerce.io",      role: "delivery", active: true,  created: "2025-09-20" },
+      { id: "u4",  name: "Sara Ng",       email: "sara.ng@gmail.com",        role: "customer", active: true,  created: "2025-10-01" },
+      { id: "u5",  name: "Jonas Weber",   email: "jonas.w@ecommerce.io",     role: "manager",  active: false, created: "2025-07-19" },
+      { id: "u6",  name: "Lin Chen",      email: "lin.chen@gmail.com",       role: "customer", active: true,  created: "2025-11-04" },
+      { id: "u7",  name: "Daniel Cho",    email: "daniel.cho@ecommerce.io",  role: "delivery", active: true,  created: "2025-10-22" },
+      { id: "u8",  name: "Olive Brown",   email: "olive.b@hotmail.com",      role: "customer", active: false, created: "2025-06-08" },
+      { id: "u9",  name: "Kenji Sato",    email: "kenji.s@ecommerce.io",     role: "delivery", active: true,  created: "2026-01-15" },
+      { id: "u10", name: "Priya Iyer",    email: "priya@ecommerce.io",       role: "admin",    active: true,  created: "2025-05-30" },
+      { id: "u11", name: "Marcus Hall",   email: "marcus.h@gmail.com",       role: "customer", active: true,  created: "2026-02-11" },
+      { id: "u12", name: "Yuki Tanaka",   email: "yuki.t@ecommerce.io",      role: "manager",  active: true,  created: "2025-12-09" },
+      { id: "u13", name: "Eva Lindgren",  email: "eva.l@protonmail.com",     role: "customer", active: true,  created: "2026-03-02" },
+      { id: "u14", name: "Sam Reyes",     email: "sam.reyes@ecommerce.io",   role: "delivery", active: false, created: "2025-08-28" },
+      { id: "u15", name: "Tomás Álvarez", email: "tomas.a@gmail.com",        role: "customer", active: true,  created: "2026-01-04" },
+    ];
+
+    function UsersPage({ accent }) {
+      const toast = useToast();
+      const [users, setUsers] = useState(SEED_USERS);
+      const [search, setSearch] = useState("");
+      const [roleFilter, setRoleFilter] = useState("all");
+      const [statusFilter, setStatusFilter] = useState("all");
+      const [page, setPage] = useState(1);
+      const PER_PAGE = 8;
+      const [modalOpen, setModalOpen] = useState(false);
+      const [editing, setEditing] = useState(null);
+      const [confirmDel, setConfirmDel] = useState(null);
+
+      const filtered = useMemo(() => {
+        return users.filter((u) => {
+          if (roleFilter !== "all" && u.role !== roleFilter) return false;
+          if (statusFilter === "active" && !u.active) return false;
+          if (statusFilter === "inactive" && u.active) return false;
+          if (search) {
+            const q = search.toLowerCase();
+            if (!u.name.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false;
+          }
+          return true;
+        });
+      }, [users, search, roleFilter, statusFilter]);
+
+      const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+      const safePage = Math.min(page, totalPages);
+      const pageRows = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
+      useEffect(() => { setPage(1); }, [search, roleFilter, statusFilter]);
+
+      const counts = useMemo(() => ({
+        all: users.length,
+        admin: users.filter((u) => u.role === "admin").length,
+        manager: users.filter((u) => u.role === "manager").length,
+        delivery: users.filter((u) => u.role === "delivery").length,
+        customer: users.filter((u) => u.role === "customer").length,
+      }), [users]);
+
+      const openAdd = () => { setEditing(null); setModalOpen(true); };
+      const openEdit = (u) => { setEditing(u); setModalOpen(true); };
+
+      const handleSave = (data) => {
+        if (editing) {
+          setUsers((s) => s.map((u) => u.id === editing.id ? { ...u, ...data } : u));
+          toast.success(`Updated ${data.name}`);
+        } else {
+          const newUser = { id: "u" + Math.random().toString(36).slice(2, 6), created: new Date().toISOString().slice(0,10), ...data };
+          setUsers((s) => [newUser, ...s]);
+          toast.success(`Created ${data.name}`);
+        }
+        setModalOpen(false);
+      };
+
+      const handleDelete = () => {
+        const u = confirmDel;
+        setUsers((s) => s.filter((x) => x.id !== u.id));
+        toast.success(`Removed ${u.name}`);
+        setConfirmDel(null);
+      };
+
+      return (
+        <>
+          <Header title="Users" subtitle="Manage system users and roles."
+                  right={<Button variant="primary" icon={I.Plus} accent={accent} onClick={openAdd}>Add User</Button>} />
+
+          {/* Role tabs */}
+          <div className="flex flex-wrap items-center gap-1.5 mb-5">
+            {[
+              { key: "all", label: "All" },
+              { key: "admin", label: "Admins" },
+              { key: "manager", label: "Managers" },
+              { key: "delivery", label: "Delivery" },
+              { key: "customer", label: "Customers" },
+            ].map((t) => {
+              const active = roleFilter === t.key;
+              return (
+                <button key={t.key} onClick={() => setRoleFilter(t.key)}
+                        className="px-3.5 py-1.5 text-[12.5px] rounded-lg font-medium transition-colors flex items-center gap-2"
+                        style={{ background: active ? `${accent}1f` : "var(--bg-1)", color: active ? accent : "var(--fg-2)", border: `1px solid ${active ? `${accent}55` : "var(--border)"}` }}>
+                  {t.label}
+                  <span className="text-[10.5px] px-1.5 py-0.5 rounded-md font-mono"
+                        style={{ background: active ? `${accent}22` : "var(--bg-2)", color: active ? accent : "var(--fg-3)" }}>
+                    {counts[t.key]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-2.5 p-2 rounded-2xl mb-3"
+               style={{ background: "var(--bg-1)", border: "1px solid var(--border)" }}>
+            <div className="relative flex-1 min-w-[220px]">
+              <I.Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--fg-3)" }}/>
+              <input value={search} onChange={(e) => setSearch(e.target.value)}
+                     placeholder="Search by name or email…"
+                     className="w-full pl-9 pr-3 py-2 text-[13px] rounded-xl outline-none"
+                     style={{ background: "transparent", color: "var(--fg-1)", border: "1px solid transparent" }} />
+            </div>
+            <div className="w-[150px]">
+              <Select value={statusFilter} onChange={setStatusFilter}
+                      options={[
+                        { value: "all", label: "All statuses" },
+                        { value: "active", label: "Active", dot: "oklch(0.78 0.16 145)" },
+                        { value: "inactive", label: "Inactive", dot: "oklch(0.5 0.01 250)" },
+                      ]} />
+            </div>
+          </div>
+
+          {/* Table */}
+          {pageRows.length === 0 ? (
+            <EmptyState icon={I.Users} title="No users match your filters" message="Try clearing search or switching to a different role tab." />
+          ) : (
+            <div className="rounded-2xl overflow-hidden" style={{ background: "var(--bg-1)", border: "1px solid var(--border)" }}>
+              <div className="grid items-center px-5 py-3 text-[10.5px] tracking-[0.14em] uppercase font-medium"
+                   style={{ gridTemplateColumns: "minmax(200px,2fr) minmax(220px,2fr) 130px 110px 100px", color: "var(--fg-3)", borderBottom: "1px solid var(--border)", background: "var(--bg-1b)" }}>
+                <div>Name</div><div>Email</div><div>Role</div><div>Status</div><div className="text-right">Actions</div>
+              </div>
+              {pageRows.map((u, i) => (
+                <div key={u.id} className="grid items-center px-5 py-3.5 text-[13px] transition-colors group"
+                     style={{ gridTemplateColumns: "minmax(200px,2fr) minmax(220px,2fr) 130px 110px 100px", borderBottom: i < pageRows.length - 1 ? "1px solid var(--border)" : "none", color: "var(--fg-1)" }}
+                     onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-1b)"}
+                     onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-semibold shrink-0"
+                         style={{ background: "var(--bg-2)", color: "var(--fg-2)", border: "1px solid var(--border)" }}>
+                      {u.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{u.name}</div>
+                      <div className="text-[11px] font-mono" style={{ color: "var(--fg-4)" }}>#{u.id}</div>
+                    </div>
+                  </div>
+                  <div className="font-mono text-[12.5px] truncate" style={{ color: "var(--fg-2)" }}>{u.email}</div>
+                  <div><RoleBadge role={u.role}/></div>
+                  <div>
+                    <button onClick={() => {
+                      setUsers((s) => s.map((x) => x.id === u.id ? { ...x, active: !x.active } : x));
+                      toast.info(`${u.name} → ${!u.active ? "Active" : "Inactive"}`);
+                    }} className="cursor-pointer">
+                      <StatusPill active={u.active}/>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => openEdit(u)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                            style={{ color: "var(--fg-2)" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-2)"; e.currentTarget.style.color = accent; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--fg-2)"; }}
+                            title="Edit">
+                      <I.Edit size={14}/>
+                    </button>
+                    <button onClick={() => setConfirmDel(u)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                            style={{ color: "var(--fg-2)" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "oklch(0.32 0.07 25 / 0.4)"; e.currentTarget.style.color = "oklch(0.85 0.13 25)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--fg-2)"; }}
+                            title="Delete">
+                      <I.Trash size={14}/>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          <div className="mt-4 flex items-center justify-between text-[12.5px]" style={{ color: "var(--fg-3)" }}>
+            <div>
+              Showing <span style={{ color: "var(--fg-1)" }}>{filtered.length === 0 ? 0 : (safePage - 1) * PER_PAGE + 1}</span>
+              –<span style={{ color: "var(--fg-1)" }}>{Math.min(safePage * PER_PAGE, filtered.length)}</span> of{" "}
+              <span style={{ color: "var(--fg-1)" }}>{filtered.length}</span> users
+            </div>
+            <div className="flex items-center gap-1">
+              <button disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30"
+                      style={{ background: "var(--bg-1)", color: "var(--fg-2)", border: "1px solid var(--border)" }}>
+                <I.ChevronLeft size={14}/>
+              </button>
+              {Array.from({ length: totalPages }).map((_, i) => {
+                const n = i + 1;
+                const active = n === safePage;
+                return (
+                  <button key={n} onClick={() => setPage(n)} className="w-8 h-8 rounded-lg text-[12.5px] font-medium font-mono"
+                          style={{ background: active ? `${accent}1f` : "var(--bg-1)", color: active ? accent : "var(--fg-2)", border: `1px solid ${active ? `${accent}55` : "var(--border)"}` }}>
+                    {n}
+                  </button>
+                );
+              })}
+              <button disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30"
+                      style={{ background: "var(--bg-1)", color: "var(--fg-2)", border: "1px solid var(--border)" }}>
+                <I.ChevronRight size={14}/>
+              </button>
+            </div>
+          </div>
+
+          {/* User Modal */}
+          <UserModal open={modalOpen} onClose={() => setModalOpen(false)} editing={editing} onSave={handleSave} accent={accent} />
+
+          <ConfirmDialog open={!!confirmDel} title="Delete user?"
+                         message={confirmDel ? `This will permanently remove ${confirmDel.name}. This action cannot be undone.` : ""}
+                         onCancel={() => setConfirmDel(null)} onConfirm={handleDelete} />
+        </>
+      );
+    }
+
+    function UserModal({ open, onClose, editing, onSave, accent }) {
+      const [form, setForm] = useState({ name: "", email: "", password: "", role: "customer", active: true });
+      const [showPwd, setShowPwd] = useState(false);
+      const [errors, setErrors] = useState({});
+
+      useEffect(() => {
+        if (open) {
+          if (editing) setForm({ name: editing.name, email: editing.email, password: "", role: editing.role, active: editing.active });
+          else setForm({ name: "", email: "", password: "", role: "customer", active: true });
+          setErrors({});
+          setShowPwd(false);
+        }
+      }, [open, editing]);
+
+      const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+      const submit = (e) => {
+        e.preventDefault();
+        const err = {};
+        if (!form.name.trim()) err.name = "Name is required.";
+        if (!form.email.trim()) err.email = "Email is required.";
+        else if (!/^\S+@\S+\.\S+$/.test(form.email)) err.email = "Enter a valid email.";
+        if (!editing && !form.password.trim()) err.password = "Password is required.";
+        else if (form.password && form.password.length < 6) err.password = "At least 6 characters.";
+        setErrors(err);
+        if (Object.keys(err).length) return;
+        onSave({ name: form.name.trim(), email: form.email.trim(), role: form.role, active: form.active });
+      };
+
+      return (
+        <Modal open={open} onClose={onClose} width={500}>
+          <form onSubmit={submit}>
+            <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div>
+                <div className="text-[10.5px] tracking-[0.16em] uppercase font-medium" style={{ color: "var(--fg-3)" }}>
+                  {editing ? "Edit user" : "New user"}
+                </div>
+                <div className="text-[17px] font-semibold mt-0.5" style={{ color: "var(--fg-1)" }}>
+                  {editing ? editing.name : "Add a team member"}
+                </div>
+              </div>
+              <button type="button" onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                      style={{ color: "var(--fg-3)" }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-2)"}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                <I.X size={16}/>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <Field label="Name" hint={errors.name}>
+                <TextInput value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Jane Doe"/>
+              </Field>
+              <Field label="Email" hint={errors.email}>
+                <TextInput type="email" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="jane@ecommerce.io"/>
+              </Field>
+              <Field label={editing ? "Password (leave blank to keep)" : "Password"} hint={errors.password}>
+                <div className="relative">
+                  <TextInput type={showPwd ? "text" : "password"} value={form.password}
+                             onChange={(e) => update("password", e.target.value)} placeholder="••••••••"/>
+                  <button type="button" onClick={() => setShowPwd((s) => !s)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md flex items-center justify-center"
+                          style={{ color: "var(--fg-3)" }}>
+                    {showPwd ? <I.EyeOff size={14}/> : <I.Eye size={14}/>}
+                  </button>
+                </div>
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Role">
+                  <Select value={form.role} onChange={(v) => update("role", v)}
+                          options={[
+                            { value: "admin", label: "Admin", dot: ROLES.admin.color },
+                            { value: "manager", label: "Manager", dot: ROLES.manager.color },
+                            { value: "delivery", label: "Delivery", dot: ROLES.delivery.color },
+                            { value: "customer", label: "Customer", dot: ROLES.customer.color },
+                          ]} />
+                </Field>
+                <Field label="Status">
+                  <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl"
+                       style={{ background: "var(--bg-0)", border: "1px solid var(--border)" }}>
+                    <span className="text-[13px]" style={{ color: form.active ? "var(--fg-1)" : "var(--fg-3)" }}>
+                      {form.active ? "Active" : "Inactive"}
+                    </span>
+                    <Toggle checked={form.active} onChange={(v) => update("active", v)} accent={accent}/>
+                  </div>
+                </Field>
+              </div>
+              <div className="rounded-xl p-3.5 mt-1" style={{ background: "var(--bg-0)", border: "1px solid var(--border)" }}>
+                <div className="text-[10.5px] tracking-[0.16em] uppercase font-medium mb-2" style={{ color: "var(--fg-3)" }}>
+                  Permissions preview
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {ROLE_NAV[form.role].map((k) => (
+                    <span key={k} className="text-[11.5px] px-2 py-0.5 rounded-md font-mono"
+                          style={{ background: "var(--bg-2)", color: "var(--fg-2)" }}>{k}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 flex items-center justify-end gap-2"
+                 style={{ borderTop: "1px solid var(--border)", background: "var(--bg-1b)" }}>
+              <Button type="button" variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+              <Button type="submit" variant="primary" size="sm" accent={accent} icon={I.Check}>
+                {editing ? "Save changes" : "Create user"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      );
+    }
+
+    // ── App Root ──────────────────────────────────────────────────────────────
+
+    const TWEAK_DEFAULTS = {
+      "accent": "#FF7A1A",
+      "role": "admin",
+      "density": "comfortable"
+    };
+
+    function App() {
+      const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const accent = tweaks.accent;
+      const allowed = ROLE_NAV[tweaks.role] || [];
+      const [currentPage, setCurrentPage] = useState(allowed.includes("users") ? "users" : allowed[0]);
+
+      useEffect(() => {
+        if (!allowed.includes(currentPage)) setCurrentPage(allowed[0] || "orders");
+      }, [tweaks.role]);
+
+      const renderPage = () => {
+        switch (currentPage) {
+          case "users":      return <UsersPage accent={accent}/>;
+          case "orders":     return <OrdersPage accent={accent}/>;
+          case "dashboard":  return <DashboardPage accent={accent}/>;
+          case "products":   return <ProductsPage accent={accent}/>;
+          case "inventory":  return <InventoryPage accent={accent}/>;
+          case "deliveries": return <DeliveriesPage accent={accent}/>;
+          default:           return <OrdersPage accent={accent}/>;
+        }
+      };
+
+      return (
+        <div style={{ "--accent": accent }} className="min-h-screen flex">
+          <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} currentRole={tweaks.role} accent={accent} />
+          <main className="flex-1 min-w-0">
+            <div className="px-8 py-7"
+                 style={{ maxWidth: tweaks.density === "comfortable" ? 1280 : 1440, margin: "0 auto" }}>
+              {renderPage()}
+            </div>
+          </main>
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="Theme">
+              <TweakColor label="Accent" value={tweaks.accent} onChange={(v) => setTweak("accent", v)}/>
+            </TweakSection>
+            <TweakSection label="Role preview">
+              <TweakRadio label="Active role" value={tweaks.role} onChange={(v) => setTweak("role", v)}
+                          options={[
+                            { value: "admin", label: "Admin" },
+                            { value: "manager", label: "Mgr" },
+                            { value: "delivery", label: "Dlvr" },
+                            { value: "customer", label: "Cust" },
+                          ]} />
+            </TweakSection>
+            <TweakSection label="Layout">
+              <TweakRadio label="Density" value={tweaks.density} onChange={(v) => setTweak("density", v)}
+                          options={[
+                            { value: "comfortable", label: "Comfy" },
+                            { value: "wide", label: "Wide" },
+                          ]} />
+            </TweakSection>
+          </TweaksPanel>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(
+      <ToastProvider>
+        <App/>
+      </ToastProvider>
+    );
+  </script>
+</body>
+</html>
